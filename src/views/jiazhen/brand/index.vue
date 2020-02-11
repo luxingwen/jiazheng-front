@@ -1,0 +1,221 @@
+<template>
+  <div class="app-container">
+    <el-button type="primary" @click="onAdd">添加</el-button>
+    <el-table
+      v-loading="listLoading"
+      :data="list"
+      element-loading-text="Loading"
+      border
+      fit
+      highlight-current-row
+    >
+  
+      <el-table-column label="ID">
+        <template slot-scope="scope">
+          {{ scope.row.ID }}
+        </template>
+      </el-table-column>
+      <el-table-column label="sortId" align="center">
+        <template slot-scope="scope">
+          <span>{{ scope.row.sort }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="url"  align="center">
+        <template slot-scope="scope">
+          {{ scope.row.url }}
+        </template>
+      </el-table-column>
+      <el-table-column class-name="status-col" label="图片" align="center">
+        <template slot-scope="scope">
+           <img :src="scope.row.img" width="40px" height="40px" />
+          </template>
+      </el-table-column>
+      <el-table-column label="Actions" align="center" width="230" class-name="small-padding fixed-width">
+          <template slot-scope="{row}">
+            <el-button type="primary" size="mini" @click="handleUpdate(row)">
+              编辑
+            </el-button>
+          </template>
+        </el-table-column>
+    </el-table>
+
+    <el-dialog title="添加" :visible.sync="dialogFormVisible">
+        <el-form :model="form">
+          <el-form-item label="url" :label-width="formLabelWidth">
+            <el-input v-model="form.url" autocomplete="off"></el-input>
+          </el-form-item>
+          <el-form-item label="排序" :label-width="formLabelWidth">
+              <el-input v-model="form.sortId" autocomplete="off" type="number"></el-input>
+          </el-form-item>
+          <el-form-item label="图片" :label-width="formLabelWidth">
+            <el-upload
+              class="avatar-uploader"
+              action="/api/v1/upload/image"
+              :show-file-list="false"
+              :on-success="handleAvatarSuccess"
+              :before-upload="beforeAvatarUpload">
+              <img v-if="imgUrl" :src="imgUrl" class="avatar">
+              <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+            </el-upload>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="dialogFormVisible = false">取 消</el-button>
+          <el-button type="primary" @click="onAddSubmit">确 定</el-button>
+        </div>
+      </el-dialog>
+
+      <el-dialog title="编辑" :visible.sync="dialogFormVisibleedi">
+          <el-form :model="form1">
+              <el-form-item label="url" :label-width="formLabelWidth">
+                <el-input v-model="form1.name" autocomplete="off"></el-input>
+              </el-form-item>
+              <el-form-item label="排序" :label-width="formLabelWidth">
+                  <el-input v-model="form1.sortId" autocomplete="off" type="number"></el-input>
+              </el-form-item>
+              <el-form-item label="图片" :label-width="formLabelWidth">
+                <el-upload
+                  class="avatar-uploader"
+                  action="/api/v1/upload/image"
+                  :show-file-list="false"
+                  :on-success="handleAvatarSuccess"
+                  :before-upload="beforeAvatarUpload">
+                  <img v-if="imgUrl1" :src="imgUrl1" class="avatar">
+                  <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+                </el-upload>
+              </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+              <el-button @click="dialogFormVisibleedi = false">取 消</el-button>
+              <el-button type="primary" @click="onUpdateSubmit">确 定</el-button>
+            </div>
+      </el-dialog>
+  </div>
+</template>
+
+<script>
+import { getBrandList, addBrand, updateBrand } from '@/api/jiazhen'
+import { imageUrl } from '@/utils/index'
+
+export default {
+  filters: {
+    statusFilter(status) {
+      const statusMap = {
+        published: 'success',
+        draft: 'gray',
+        deleted: 'danger'
+      }
+      return statusMap[status]
+    }
+  },
+  data() {
+    return {
+      list: null,
+      listLoading: true,
+      dialogFormVisible: false,
+      formLabelWidth: '120px',
+      dialogFormVisibleedi: false,
+      imgUrl: '',
+      imgUrl1: '',
+      form: {
+        url: "",
+        sort: 0,
+        img: ''
+      },
+      form1: {
+        ID: 0,
+        url: "",
+        sort: 0,
+        img: ''
+      }
+    }
+  },
+  created() {
+    this.fetchData()
+  },
+  methods: {
+    fetchData() {
+      this.listLoading = true
+      getBrandList().then(response => {
+        this.list = response.data
+        this.list.forEach(item => {
+          item.img = imageUrl(item.img)
+        });
+
+        this.listLoading = false
+      })
+    },
+    onAdd() {
+      this.dialogFormVisible=true;
+    },
+    handleAvatarSuccess(res, file) {
+      this.imgUrl = res.path + res.filename;
+      this.form.img = res.filename;
+      this.form1.img = res.filename;
+      this.imgUrl1 = res.path + res.filename;
+      console.log(this.form.img);
+      },
+    beforeAvatarUpload(file) {
+        const isLt2M = file.size / 1024 / 1024 < 5;
+
+        if (!isLt2M) {
+          this.$message.error('上传头像图片大小不能超过 5MB!');
+        }
+        return isLt2M;
+    },
+    onAddSubmit() {
+      this.dialogFormVisible = false;
+      console.log(this.form);
+      this.form.sort = parseInt(this.form.sort);
+      let form = JSON.stringify(this.form);
+      console.log(form)
+      addBrand(form).then(response => {
+        this.$message.success('添加成功');
+      })
+    },
+    handleUpdate(row) {
+      this.form1.ID = row.ID
+      this.form1.sort = row.sort
+      this.form1.img = row.img
+      this.imgUrl1 = row.img
+      this.dialogFormVisibleedi =true
+    },
+    onUpdateSubmit() {
+      this.form1.sort = parseInt(this.form1.sort);
+      updateBrand(this.form1.ID,this.form1).then(res => {
+        console.log("res:",res)
+        this.$message.success('更新成功');
+        this.dialogFormVisibleedi = false
+      })
+    }
+  }
+}
+</script>
+
+
+
+<style>
+    .avatar-uploader .el-upload {
+      border: 1px dashed #d9d9d9;
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .avatar-uploader .el-upload:hover {
+      border-color: #409EFF;
+    }
+    .avatar-uploader-icon {
+      font-size: 28px;
+      color: #8c939d;
+      width: 178px;
+      height: 178px;
+      line-height: 178px;
+      text-align: center;
+    }
+    .avatar {
+      width: 178px;
+      height: 178px;
+      display: block;
+    }
+  </style>
